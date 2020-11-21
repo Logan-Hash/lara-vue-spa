@@ -32,7 +32,7 @@ class ProductUpdateRequest extends FormRequest
     {
         return [
             'name.string' => "အမည်သည် စာသားဖြစ်ရမည်။",
-            'price.numeric' => 'စေ ျးနှုန်းသည် ဂဏန်းဖြစ်ရမည်။'
+            'price.numeric' => 'စျေးနှုန်းသည် ဂဏန်းဖြစ်ရမည်။'
         ];
     }
 }

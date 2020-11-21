@@ -7,9 +7,14 @@
                 </button>
             </div>
             <div class="col-4">
-                <form action="">
+                <form @submit.prevent="view">
                     <div class="input-group">
-                        <input type="text" name="search" class="form-control" placeholder="Search">
+                        <input 
+                            v-model="search" 
+                            type="text" 
+                            class="form-control" 
+                            placeholder="Search"
+                        />
                     
                         <div class="input-group-append">
                             <button type="submit" class="btn btn-primary">
@@ -25,14 +30,31 @@
                 <div class="card">
                     <h4 class="card-header">{{ isEdit ? 'Edit' : 'Create' }}</h4>
                     <div class="card-body">
-                        <form @submit.prevent="isEdit ? update() : store()">
+
+                        <alert-error :form="product" message="There were some problems with your input."></alert-error>
+
+                        <form @submit.prevent="isEdit ? update() : store()" @keydown="product.onKeydown($event)">
                             <div class="form-group">
                                 <label for="name">Name: </label>
-                                <input v-model="product.name" type="text" name="name" class="form-control">
+                                <input 
+                                    v-model="product.name" 
+                                    type="text" 
+                                    class="form-control" 
+                                    name="name"
+                                    :class="{ 'is-invalid': product.errors.has('name') }"
+                                />
+                                <has-error :form="product" field="name"></has-error>
                             </div>
                             <div class="form-group">
                                 <label for="price">Price: </label>
-                                <input  v-model="product.price" type="number" name="price" class="form-control">
+                                <input  
+                                    v-model="product.price" 
+                                    type="number" 
+                                    name="price" 
+                                    class="form-control"
+                                    :class="{ 'is-invalid': product.errors.has('price') }"
+                                />
+                                <has-error :form="product" field="price"></has-error>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save mr-1"></i> Save
@@ -52,7 +74,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="product in products" :key="product.id">
+                        <tr v-for="product in products.data" :key="product.id">
                             <td>{{ product.id }}</td>
                             <td>{{ product.name }}</td>
                             <td>{{ product.price }}</td>
@@ -67,74 +89,132 @@
                         </tr>
                     </tbody>
                 </table>
+                <pagination :data="products" @pagination-change-page="view"></pagination>
             </div>
+            
         </div>
+        <loading 
+            :active.sync="isLoading" 
+            :is-full-page="true"
+            :loader="loader"
+            :width="width"
+            :height="height"
+            :color="color"
+        ></loading>
     </div>
 </template>
 
 <script>
+import { Form, HasError, AlertError } from 'vform';
+import Loading from 'vue-loading-overlay';
+import 'vue-loading-overlay/dist/vue-loading.css';
+
 export default {
+
     name: 'ProductComponent',
+    components: {
+        Loading
+    },
     data() {
         return {
             isEdit: false,
-            products: [],
-            product: {
+            isLoading: true,
+            loader: 'bars',
+            width: 35,
+            height: 35,
+            color: '#007BFF',
+            search: '',
+            products: {},
+            product: new Form({
+                id: '',
                 name: '',
                 price: ''
-            }
+            })
         }
     },
     methods: {
-        view() {
-            axios.get('/api/product')
+        view(page = 1) {
+            this.$Progress.start()
+            axios.get(`/api/product?page=${page}&search=${this.search}`)
             .then(res => {
+                setTimeout(() => {
+                  this.isLoading = false
+                },1000)
+                this.$Progress.finish()
                 this.products = res.data
             })
             .catch(err => {
+                this.$Progress.fail()
                 console.log(err)
             })
         },
         create() {
-            this.isEdit = false
-            this.product.id = '';
-            this.product.name = '';
-            this.product.price = '';
+            this.product.clear();
+            this.isEdit = false;
+            this.product.reset();
         },
         store() {
-            axios.post('/api/product', this.product)
+            this.$Progress.start();
+            this.product.post('/api/product')
             .then(res => {
+                this.$Progress.finish();
                 this.view();
-                this.product = {
-                    name: '',
-                    price: ''
-                };
+                this.product.reset();
+                Toast.fire({
+                  icon: 'success',
+                  title: 'Created in successfully'
+                });
             })
+            .catch(err => {
+                this.$Progress.fail()
+                console.log(err);
+            });
         },
         edit(product) {
+            this.product.clear()
             this.isEdit = true
-
-            this.product.id = product.id;
-            this.product.name = product.name;
-            this.product.price = product.price;
+            this.product.fill(product)
         },
         update(product) {
-            axios.put(`/api/product/${this.product.id}`, this.product)
+            this.$Progress.start();
+            this.product.put(`/api/product/${this.product.id}`)
             .then(res => {
+                this.$Progress.finish();
                 this.view();
-                this.product.id = '';
-                this.product.name = '';
-                this.product.price = '';
+                this.product.reset();
                 this.isEdit = false;
-            }).catch(err => console.log(err));
+            }).catch(err => {
+                this.$Progress.fail();
+                console.log(err)
+            });
         },
         deleteData(product) {
-            if(!confirm('Are you sure to delete ?')) {
-                return;
-            }
-            axios.delete(`/api/product/${product.id}`)
-            .then(res => {
-                this.view();
+            this.$Progress.start();
+            Swal.fire({
+              title: 'Are you sure?',
+              text: "You won't be able to revert this!",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+              confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+              if (result.isConfirmed) {
+                axios.delete(`/api/product/${product.id}`)
+                .then(res => {
+                    this.$Progress.finish();
+                    this.view();
+                    Swal.fire(
+                      'Deleted!',
+                      'success'
+                    ),
+                    Toast.fire({
+                      icon: 'success',
+                      title: 'Deleted in successfully'
+                    })
+                })
+                .catch(err => this.$Progress.finish());
+              }
             })
             .catch(err => {
                 console.log(err)
@@ -143,6 +223,6 @@ export default {
     },
     created() {
         this.view()
-    }
+    },
 }
 </script>

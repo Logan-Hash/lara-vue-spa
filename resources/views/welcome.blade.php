@@ -10,6 +10,7 @@
     <body class="antialiased">
         <div id="app">
             <product-component></product-component>
+            <vue-progress-bar></vue-progress-bar>
         </div>
 
         <script src="{{ mix('/js/app.js') }}"></script>

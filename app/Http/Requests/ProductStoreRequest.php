@@ -33,7 +33,7 @@ class ProductStoreRequest extends FormRequest
         return [
             'name.required' => "အမည်ထည့်ရန်လိုအပ်သည်။",
             'name.string' => "အမည်သည် စာသားဖြစ်ရမည်။",
-            'price.required' => 'စေ ျးနှုန်းထည့်ပါ။',
+            'price.required' => 'စျေးနှုန်းထည့်ပါ။',
         ];
     }
 }

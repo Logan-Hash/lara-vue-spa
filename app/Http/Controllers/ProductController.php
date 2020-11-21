@@ -8,14 +8,11 @@ use App\Models\Product;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        return Product::orderBy('id','desc')->get();
+        return Product::when(request('search'), function($query) {
+            $query->where('name', 'like', '%' . request('search') . '%');
+        })->orderBy('id', 'desc')->paginate(5);
     }
 
     public function store(ProductStoreRequest $request)
